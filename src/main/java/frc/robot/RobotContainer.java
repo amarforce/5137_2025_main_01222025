@@ -3,6 +3,7 @@ package frc.robot;
 
 import java.io.File;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -15,6 +16,9 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.elastic.*;
 import frc.robot.subsystems.*;
 import frc.robot.commands.*;
+import frc.robot.commands.coral.CoralPositioningCommand;
+import frc.robot.commands.coral.CoralScoreL1Command;
+import frc.robot.commands.coral.CoralVisionCommand;
 
 @SuppressWarnings("unused")
 public class RobotContainer {
@@ -27,14 +31,19 @@ public class RobotContainer {
 	private Arm arm;
 	private Wrist wrist;
 	private Intake intake;
-  private Hang hang;
+    private Hang hang;
 
 	private SwerveCommands swerveCommands;
 	private ElevatorCommands elevatorCommands;
 	private ArmCommands armCommands;
 	private WristCommands wristCommands;
 	private IntakeCommands intakeCommands;
-  private HangCommand hangCommand;
+    private HangCommand hangCommand;
+
+	    // New coral command declarations
+    private final CoralVisionCommand coralVisionCommand;
+    private final CoralPositioningCommand coralPositionCommand;
+    private final CoralScoreL1Command coralScoreCommand;
 
 	private Reef reef;
 
@@ -48,22 +57,36 @@ public class RobotContainer {
 		arm = new Arm();
 		wrist = new Wrist();
 		intake = new Intake();
-    hang = new Hang();
+    	hang = new Hang();
 
 		swerveCommands = new SwerveCommands(swerve);
 		elevatorCommands = new ElevatorCommands(elevator);
 		armCommands = new ArmCommands(arm);
 		wristCommands = new WristCommands(wrist);
 		intakeCommands = new IntakeCommands(intake);
-    hangCommand = new HangCommand(hang);
+    	hangCommand = new HangCommand(hang);
+
+		// Initialize new coral commands
+        coralVisionCommand = new CoralVisionCommand(vision);
+        coralPositionCommand = new CoralPositioningCommand(swerve);
+        coralScoreCommand = new CoralScoreL1Command(arm, wrist, intake);
 
 		reef = new Reef();
 		SmartDashboard.putData("Reef", reef);
+
+		// Initialize Network Table for coral automation
+        // This sets the "Status" entry in the "Coral" table to "Ready"
+        // It indicates that the system is ready for coral automation tasks.
+        NetworkTableInstance.getDefault().getTable("Coral").getEntry("Status").setString("Ready");
+        // Ensure the statement is complete with a semicolon at the end.
 
 		configureBindings();
 	}
 
 	private void configureBindings() {
+		
+
+		
 		// Driver Bindings
 
 		swerve.setDefaultCommand(
@@ -74,6 +97,7 @@ public class RobotContainer {
 				() -> driver.R1().negate().getAsBoolean())
 		);
 
+		// Re-add the driver's cross button binding for swerve lock
 		driver.cross().whileTrue(swerveCommands.lock());
 
 		driver.triangle().onTrue(swerveCommands.driveToStation());
@@ -98,10 +122,39 @@ public class RobotContainer {
 
 		driver.touchpad().onTrue(new InstantCommand(() -> CommandScheduler.getInstance().cancelAll()));
 
+		        // Add new coral automation binding to driver's L1 button
+		driver.L1().onTrue(
+			Commands.sequence(
+				// Start with a command to update dashboard
+				new InstantCommand(() -> 
+					SmartDashboard.putString("Automation Status", "Starting Coral L1 Sequence")),
+						
+				// Run vision tracking until target acquired
+				coralVisionCommand.until(() -> 
+					NetworkTableInstance.getDefault()
+						.getTable("Coral")
+						.getEntry("tracking")
+						.getBoolean(false)),
+						
+				// Position robot for scoring
+				coralPositionCommand,
+						
+				// Execute scoring sequence
+				coralScoreCommand,
+						
+				// Clean up and reset status
+				new InstantCommand(() -> {
+					SmartDashboard.putString("Automation Status", "Sequence Complete");
+					NetworkTableInstance.getDefault()
+						.getTable("Coral")
+						.getEntry("Status")
+						.setString("Ready");
+				})
+			)
+		);
 		// Operator Bindings
 
-		elevator.setDefaultCommand(elevatorCommands.setGoal(()->1-operator.getLeftY()));
-
+		elevator.setDefaultCommand(elevatorCommands.setGoal(() -> 1 - operator.getLeftY()));
 		arm.setDefaultCommand(armCommands.setSpeed(() -> operator.getRightX()));
 
 		operator.triangle()
