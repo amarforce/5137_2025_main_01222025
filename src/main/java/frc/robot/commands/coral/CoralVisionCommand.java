@@ -11,10 +11,9 @@ public class CoralVisionCommand extends Command {
     private final Vision visionSubsystem;
     private final NetworkTable coralTable;
     private PhotonTrackedTarget currentTarget;
-    
+
     public CoralVisionCommand(Vision vision) {
         this.visionSubsystem = vision;
-        // Create NetworkTable for coral tracking status
         this.coralTable = NetworkTableInstance.getDefault().getTable("Coral");
         addRequirements(vision);
     }
@@ -25,26 +24,30 @@ public class CoralVisionCommand extends Command {
         SmartDashboard.putString("Coral Vision Status", "Searching...");
     }
 
+
+
     @Override
     public void execute() {
-        // Get the closest coral from vision
         currentTarget = visionSubsystem.getClosestCoral();
         
         if (currentTarget != null) {
-            // Update NetworkTables with target information
-            coralTable.getEntry("tracking").setBoolean(true);
-            coralTable.getEntry("targetYaw").setDouble(currentTarget.getYaw());
-            coralTable.getEntry("targetPitch").setDouble(currentTarget.getPitch());
-            coralTable.getEntry("targetArea").setDouble(currentTarget.getArea());
+            double yaw = currentTarget.getYaw();
+            double pitch = currentTarget.getPitch();
+            double area = currentTarget.getArea();
             
-            // Update SmartDashboard
+            coralTable.getEntry("tracking").setBoolean(true);
+            coralTable.getEntry("targetYaw").setDouble(yaw);
+            coralTable.getEntry("targetPitch").setDouble(pitch);
+            coralTable.getEntry("targetArea").setDouble(area);
+            
             SmartDashboard.putString("Coral Vision Status", "Target Acquired");
-            SmartDashboard.putNumber("Coral Yaw", currentTarget.getYaw());
+            SmartDashboard.putNumber("Coral Yaw", yaw);
         } else {
             coralTable.getEntry("tracking").setBoolean(false);
             SmartDashboard.putString("Coral Vision Status", "No Target");
         }
     }
+
 
     @Override
     public void end(boolean interrupted) {
@@ -54,7 +57,7 @@ public class CoralVisionCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        // Command runs continuously until interrupted
-        return false;
+        return currentTarget != null;
     }
+ 
 }

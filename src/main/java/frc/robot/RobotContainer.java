@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+import frc.robot.commands.coral.*;  // Add this import for coral commands
 
 import frc.robot.elastic.*;
 import frc.robot.subsystems.*;
@@ -66,19 +67,19 @@ public class RobotContainer {
 		intakeCommands = new IntakeCommands(intake);
     	hangCommand = new HangCommand(hang);
 
-		// Initialize new coral commands
+        // Initialize coral commands
         coralVisionCommand = new CoralVisionCommand(vision);
-        coralPositionCommand = new CoralPositioningCommand(swerve);
-        coralScoreCommand = new CoralScoreL1Command(arm, wrist, intake);
+        coralPositioningCommand = new CoralPositioningCommand(swerve);
+        coralScoreL1Command = new CoralScoreL1Command(arm, wrist, intake);
 
 		reef = new Reef();
 		SmartDashboard.putData("Reef", reef);
 
-		// Initialize Network Table for coral automation
-        // This sets the "Status" entry in the "Coral" table to "Ready"
-        // It indicates that the system is ready for coral automation tasks.
-        NetworkTableInstance.getDefault().getTable("Coral").getEntry("Status").setString("Ready");
-        // Ensure the statement is complete with a semicolon at the end.
+		 // Initialize NetworkTable for coral automation
+		NetworkTableInstance.getDefault()
+				.getTable("Coral")
+				.getEntry("Status")
+				.setString("Ready");
 
 		configureBindings();
 	}
@@ -123,6 +124,8 @@ public class RobotContainer {
 		driver.touchpad().onTrue(new InstantCommand(() -> CommandScheduler.getInstance().cancelAll()));
 
 		        // Add new coral automation binding to driver's L1 button
+
+				
 		driver.L1().onTrue(
 			Commands.sequence(
 				// Start with a command to update dashboard

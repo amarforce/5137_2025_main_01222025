@@ -1,14 +1,14 @@
 package frc.robot.commands.coral;
 
+
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Arm;
-import frc.robot.subsystems.Wrist;
 import frc.robot.subsystems.Intake;
+import frc.robot.constants.IntakeConstants;
 
 public class CoralScoreL1Command extends Command {
     private final Arm armSubsystem;
-    private final Wrist wristSubsystem;
     private final Intake intakeSubsystem;
     
     private enum ScoreState {
@@ -20,11 +20,10 @@ public class CoralScoreL1Command extends Command {
     private ScoreState currentState;
     private double startTime;
 
-    public CoralScoreL1Command(Arm arm, Wrist wrist, Intake intake) {
+    public CoralScoreL1Command(Arm arm, Intake intake) {
         this.armSubsystem = arm;
-        this.wristSubsystem = wrist;
         this.intakeSubsystem = intake;
-        addRequirements(arm, wrist, intake);
+        addRequirements(arm, intake);
     }
 
     @Override
@@ -38,10 +37,8 @@ public class CoralScoreL1Command extends Command {
     public void execute() {
         switch (currentState) {
             case MOVING_TO_POSITION:
-                // Move arm to L1 position
-                armSubsystem.moveToL1Position();
-                // Check if arm is in position
-                if (armSubsystem.isAtTarget()) {
+                armSubsystem.setGoal(0.0); // Set appropriate L1 position
+                if (Math.abs(armSubsystem.getPose() - armSubsystem.getGoal()) < 0.1) {
                     currentState = ScoreState.RELEASING;
                     startTime = System.currentTimeMillis();
                     SmartDashboard.putString("Coral Score Status", "Releasing");
@@ -49,9 +46,8 @@ public class CoralScoreL1Command extends Command {
                 break;
                 
             case RELEASING:
-                // Release the coral
-                intakeSubsystem.setSpeed(-0.3); // Reverse intake to release
-                if (System.currentTimeMillis() - startTime > 500) { // 0.5 second release
+                intakeSubsystem.setSpeed(-IntakeConstants.defaultMotorSpeedIntake);
+                if (System.currentTimeMillis() - startTime > 500) {
                     currentState = ScoreState.RETRACTING;
                     startTime = System.currentTimeMillis();
                     SmartDashboard.putString("Coral Score Status", "Retracting");
@@ -59,8 +55,7 @@ public class CoralScoreL1Command extends Command {
                 break;
                 
             case RETRACTING:
-                // Return to safe position
-                armSubsystem.moveToStowPosition();
+                armSubsystem.setGoal(0.0); // Set stow position
                 intakeSubsystem.stop();
                 break;
         }
@@ -69,6 +64,7 @@ public class CoralScoreL1Command extends Command {
     @Override
     public void end(boolean interrupted) {
         intakeSubsystem.stop();
+        armSubsystem.setGoal(0.0); // Set safe position
         SmartDashboard.putString("Coral Score Status", 
             interrupted ? "Interrupted" : "Completed");
     }
@@ -76,6 +72,6 @@ public class CoralScoreL1Command extends Command {
     @Override
     public boolean isFinished() {
         return currentState == ScoreState.RETRACTING && 
-               System.currentTimeMillis() - startTime > 1000; // 1 second retract time
+               System.currentTimeMillis() - startTime > 1000;
     }
 }
