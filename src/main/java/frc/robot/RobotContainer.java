@@ -123,38 +123,34 @@ public class RobotContainer {
 
 		driver.touchpad().onTrue(new InstantCommand(() -> CommandScheduler.getInstance().cancelAll()));
 
-		        // Add new coral automation binding to driver's L1 button
+	     // Add new coral automation binding to driver's L1 button
+        // Add coral automation sequence to driver's L1 button
+        driver.L1().whileTrue(
+            Commands.sequence(
+                // Start with status update
+                new InstantCommand(() -> 
+                    SmartDashboard.putString("Automation Status", "Starting Coral L1 Sequence")),
+                
+                // Run vision tracking
+                coralVisionCommand,
+                
+                // Position robot
+                coralPositioningCommand,
+                
+                // Execute scoring sequence
+                coralScoreL1Command,
+                
+                // Reset status
+                new InstantCommand(() -> {
+                    SmartDashboard.putString("Automation Status", "Sequence Complete");
+                    NetworkTableInstance.getDefault()
+                        .getTable("Coral")
+                        .getEntry("Status")
+                        .setString("Ready");
+                })
+            )
+		
 
-				
-		driver.L1().onTrue(
-			Commands.sequence(
-				// Start with a command to update dashboard
-				new InstantCommand(() -> 
-					SmartDashboard.putString("Automation Status", "Starting Coral L1 Sequence")),
-						
-				// Run vision tracking until target acquired
-				coralVisionCommand.until(() -> 
-					NetworkTableInstance.getDefault()
-						.getTable("Coral")
-						.getEntry("tracking")
-						.getBoolean(false)),
-						
-				// Position robot for scoring
-				coralPositionCommand,
-						
-				// Execute scoring sequence
-				coralScoreCommand,
-						
-				// Clean up and reset status
-				new InstantCommand(() -> {
-					SmartDashboard.putString("Automation Status", "Sequence Complete");
-					NetworkTableInstance.getDefault()
-						.getTable("Coral")
-						.getEntry("Status")
-						.setString("Ready");
-				})
-			)
-		);
 		// Operator Bindings
 
 		elevator.setDefaultCommand(elevatorCommands.setGoal(() -> 1 - operator.getLeftY()));
